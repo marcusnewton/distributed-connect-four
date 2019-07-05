@@ -1,0 +1,14 @@
+{
+  "name": "Holochain Connect Four",
+  "description": "Play Connect Four fully peer-2-peer!",
+  "authors": [
+    {
+      "identifier": "Marcus Newton <marcus.newton@hotmail.com>",
+      "public_key_source": "",
+      "signature": ""
+    }
+  ],
+  "version": "0.1.0",
+  "dht": {},
+  "properties": null
+}
