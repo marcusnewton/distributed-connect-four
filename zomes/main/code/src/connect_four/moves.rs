@@ -12,12 +12,12 @@ use hdk::holochain_json_api::{
 #[derive(Clone, Debug, Serialize, Deserialize, DefaultJson, PartialEq)]
 pub enum MoveType {
     DropPiece {
-			column: u32,
-		},
+        column: u32,
+    },
 }
 
 impl MoveType {
-	pub fn describe() -> Vec<MoveType> {
-		vec![MoveType::DropPiece{column: 0}]
-	}
+    pub fn describe() -> Vec<MoveType> {
+        vec![MoveType::DropPiece{column: 0}]
+    }
 }
