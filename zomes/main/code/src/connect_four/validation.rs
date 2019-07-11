@@ -20,7 +20,6 @@ use super::moves::MoveType;
  *
  */
 
-
 impl Move {
     pub fn is_valid(&self, game: Game, game_state: GameState) -> Result<(), String> {
         // Check if a move is valid given the current game and its state
@@ -31,9 +30,18 @@ impl Move {
             MoveType::DropPiece{column} => {
                 game_state.is_column_in_bounds(column)?;
                 game_state.is_column_not_full(&game_state, column)?;
-                Ok(())
             }
         }
+
+        Ok(())
+    }
+}
+
+fn is_game_in_progress(game_state: &GameState) -> Result<(), String> {
+    if game_state.in_progress == false {
+        Err("Game has ended".into())
+    } else {
+        Ok(())
     }
 }
 
@@ -48,21 +56,13 @@ fn is_it_players_turn(player: Address, game: &Game, game_state: &GameState) -> R
                 Ok(())
             }
         },
-        None => { // if no moves in history
-            // Determine who goes first
+        None => { 
+            // if no moves in history, determine who goes first
             if game.player_2 == player {
                 Ok(())
             } else {
                 Err("Player 2 must make the first move".into())
             }
         }
-    }
-}
-
-fn is_game_in_progress(game_state: &GameState) -> Result<(), String> {
-    if game_state.in_progress == false {
-        Err("Game has ended".into())
-    } else {
-        Ok(())
     }
 }

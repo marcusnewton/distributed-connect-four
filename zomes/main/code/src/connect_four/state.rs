@@ -5,11 +5,26 @@ use hdk::holochain_json_api::{
 use crate::game_move::Move;
 use crate::game::Game;
 use super::MoveType;
+use hdk::AGENT_ADDRESS;
 
 const ROWS: usize = 6;
 const COLUMNS: usize = 7;
 
 pub type Grid = [[u8; ROWS]; COLUMNS];
+
+/**
+ * Grid structure:
+ * 
+ *    0 1 2 3 4 5 6
+ *    _ _ _ _ _ _ _
+ * 5 |_|_|_|_|_|_|_|
+ * 4 |_|_|_|_|_|_|_|
+ * 3 |_|_|_|_|_|_|_|
+ * 2 |_|_|_|_|_|_|_|
+ * 1 |_|_|_|_|_|_|_|
+ * 0 |_|_|_|_|_|_|_|
+ * 
+ */
 
 /**
  *
@@ -46,7 +61,7 @@ impl PlayerState {
 impl GameState {
     pub fn initial() -> Self {
         Self {
-            grid: [[0; ROWS]; COLUMNS], // create 2D array of zeroes
+            grid: [[0; ROWS]; COLUMNS], // initialise grid with zeroes
             moves_history: Vec::new(), // flexible size vector
             player_1: PlayerState::initial(),
             player_2: PlayerState::initial(),
@@ -55,8 +70,44 @@ impl GameState {
     }
 
     pub fn render(&self) -> String {
-        // <<DEVCAMP-TODO>> return a pretty formatting string representation
-        "".to_string()
+        // return a pretty formatting string representation for cli
+        let grid = self.grid.clone();
+
+        let mut disp = "\n".to_string();
+
+        if let Some(last_move) = self.moves_history.last() {
+            if last_move.author.to_string() == AGENT_ADDRESS.to_string() {
+                disp.push_str("It is your opponents turn \n");
+            } else {
+                disp.push_str("It is your turn \n");
+            }
+        } else {
+            disp.push_str("Non-creator must make the first move \n");        
+        }
+        disp.push('\n');
+        
+        // render grid
+        disp.push_str(" 0 1 2 3 4 5 6\n");
+        for row in (0..(ROWS)).rev() {
+            disp.push_str("|");
+            for col in 0..(COLUMNS) {
+                let player_piece = match grid[col][row] {
+                    1 => "1",
+                    2 => "2",
+                    _ => "_",
+                };
+                disp.push_str(&format!("{}|", player_piece));
+            }
+            disp.push('\n');
+        }
+
+        if self.player_1.resigned {
+            disp.push_str(&format!("Game over: Player 1 has resigned!\n"));
+        } else if self.player_2.resigned {
+            disp.push_str(&format!("Game over: Player 2 has resigned!\n"));
+        }
+
+        disp
     }
 
     pub fn evolve(&self, game: Game, next_move: &Move) -> GameState {
@@ -107,11 +158,11 @@ impl GameState {
     }
 
     fn drop_piece(&self, mut grid: Grid, player: u8, column: usize) -> Grid {
-        // Get column from grid reference
+        // Get column as grid slice
         let col_array = &grid[column];
 
         // Make gravity happen
-        for el in 0..(col_array.len()-1) {  // begin at bottom of column and work upwards
+        for el in 0..(col_array.len()) {  // begin at bottom of column and work upwards
             if col_array[el] == 0 {         // until unoccupied spot
                 grid[column][el as usize] = player;
                 break;
@@ -124,14 +175,14 @@ impl GameState {
     fn check_draw(&self, grid: Grid) -> bool {
         // If all columns full
         // This is called if neither player has resigned after a drop
-        for col in 0..(COLUMNS-1) {
+        for col in 0..(COLUMNS) {
             // check if vacant spot in top row
             if grid[col][ROWS-1] == 0 {
-                return true;
+                return false;
             }
         }
 
-        return false;
+        return true;
     }
 
     fn check_win(&self, grid: Grid, player: u8) -> bool {    
@@ -141,16 +192,16 @@ impl GameState {
     }
 
     fn check_column_win(&self, grid: Grid, player: u8) -> bool {
-        for col in 0..(grid.len()-1) {
+        for col in 0..(grid.len()) {
             let mut count = 0;
 
-            for row in 0..(grid[col].len()-1) {
+            for row in 0..(grid[col].len()) {
                 // check if piece is the player's
                 if grid[col][row] == player {
                     // then increment counter
                     count = count + 1;
 
-                    // connect 4!
+                    // connect 4
                     if count == 4 {
                         return true;
                     }
@@ -166,10 +217,10 @@ impl GameState {
     }
 
     fn check_row_win(&self, grid: Grid, player: u8) -> bool {
-        for row in 0..(grid[0].len()-1) {
+        for row in 0..(grid[0].len()) {
             let mut count = 0;
 
-            for col in 0..(grid.len()-1) {
+            for col in 0..(grid.len()) {
                 // check if piece is the player's
                 if grid[col][row] == player {
                     // then increment counter
@@ -190,9 +241,9 @@ impl GameState {
     }
 
     fn check_diagonal_win(&self, grid: Grid, player: u8) -> bool {
-        for col in 0..(grid.len()-4) {
-            // Up and to the right diagonal
-            for row in 0..(grid[0].len()-4) {
+        // Up and to the right diagonal
+        for row in 0..=2 {
+            for col in 0..=3 {
                 if 
                     grid[col][row]      == player &&
                     grid[col+1][row+1]  == player &&
@@ -203,8 +254,9 @@ impl GameState {
                     }
             }
 
-            // Down and to the right diagonal
-            for row in (grid[0].len()-1)..3 {
+        // Down and to the right diagonal
+        for row in 3..=5 {
+            for col in 0..=3 {
                 if 
                     grid[col][row]      == player &&
                     grid[col+1][row-1]  == player &&
@@ -213,22 +265,22 @@ impl GameState {
                     {
                         return true;
                     }
+                }
             }
         }
-
         return false;
     }
 
     // Validation fragment
     pub fn is_column_in_bounds(&self, column: u32) -> Result<(), String> {
-        if column < (COLUMNS - 1) as u32 {
+        if column < (COLUMNS) as u32 {
             Ok(())
         } else {
             Err("Column out of bounds".into())
         }
     }
 
-    // Validation fragment. Borrow GameState so that other fragments can use it after.
+    // Validation fragment
     pub fn is_column_not_full(&self, game_state: &GameState, column: u32) -> Result<(), String> {
         // If the top row of the column is 0, then it can receive a piece
         if game_state.grid[column as usize][ROWS-1] == 0 {

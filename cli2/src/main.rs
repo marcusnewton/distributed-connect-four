@@ -13,8 +13,6 @@ struct Cli {
 	url: reqwest::Url,
 	/// This is the instance ID in the conductor that is running the game on the given port (e.g gameInstance)
 	instance: String,
-
-    // e.g. cargo run http://localhost:3001 instance1
 }
 
 static COMMANDS: &[(&str, &str)] = &[

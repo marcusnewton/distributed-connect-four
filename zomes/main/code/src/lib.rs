@@ -101,8 +101,8 @@ pub mod main {
         // commit the latest move to local chain to allow validation of the next move (if one exists)
         let base_address = match moves.last() {
             Some(last_move) => {
-                let new_move_entry = Entry::App("move".into(), last_move.into());
-                hdk::commit_entry(&new_move_entry)?
+                let last_move_entry = Entry::App("move".into(), last_move.into());
+                hdk::commit_entry(&last_move_entry)?
             }
             None => { // no moves have been made so commit the Game
                 let game = game::get_game(&new_move.game)?;
